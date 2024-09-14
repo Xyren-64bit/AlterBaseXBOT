@@ -1,8 +1,24 @@
-#!/usr/bin/bash
-#
-# Credits: @mrismanaziz
-# FROM File-Sharing-Man <https://github.com/mrismanaziz/File-Sharing-Man/>
-# t.me/SharingUserbot & t.me/Lunatic0de
+#!/bin/bash
 
-# start
+# Nama virtual environment
+VENV_NAME="venv"
+
+# Periksa apakah virtual environment sudah ada
+if [ ! -d "$VENV_NAME" ]; then
+  echo "Membuat virtual environment..."
+  python3 -m venv "$VENV_NAME"
+fi
+
+# Aktifkan virtual environment
+echo "Mengaktifkan virtual environment..."
+source "$VENV_NAME/bin/activate"
+
+# Instal dependensi jika belum terinstal
+if [ ! -f "$VENV_NAME/bin/pip" ]; then  # Periksa apakah pip sudah ada di venv
+  echo "Menginstal dependensi..."
+  pip install -r requirements.txt
+fi
+
+# Jalankan bot
+echo "Menjalankan bot..."
 python3 main.py
