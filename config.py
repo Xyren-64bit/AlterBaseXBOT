@@ -85,3 +85,20 @@ logging.getLogger("pyrogram").setLevel(logging.WARNING)
 
 def LOGGER(name: str) -> logging.Logger:
     return logging.getLogger(name)
+
+def reload_config():
+    """Reload the configuration from config.env."""
+    load_dotenv("config.env", override=True)  # Muat ulang dengan menimpa nilai lama
+
+    # Reload setiap variabel secara manual dari os.environ
+    globals().update(
+        {
+            key: os.environ.get(key)
+            for key in [
+                "ADMINS",
+                "FORCE_SUB_CHANNEL",
+                "FORCE_SUB_GROUP",
+                "CHANNEL_ID",
+            ]
+        }
+    )
