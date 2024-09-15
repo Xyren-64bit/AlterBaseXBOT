@@ -35,6 +35,9 @@ from helper_func import encode
             "stats",
             "vars",
             "id",
+            "edit",
+            "restart",
+            "post",
         ]
     )
 )
