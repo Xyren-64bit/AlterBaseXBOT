@@ -38,6 +38,8 @@ from helper_func import encode
             "edit",
             "restart",
             "post",
+            "config",
+            "delete",
         ]
     )
 )
