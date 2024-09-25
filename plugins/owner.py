@@ -15,7 +15,7 @@ from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
 from pyrogram.types import Message
 from bot import Bot 
 from config import ADMINS, LOGGER
-from database.sql import query_msg, delete_user, add_scheduled_post, get_scheduled_posts
+from database.sql import query_msg, delete_user
 from helper_func import get_message_id
 
 
@@ -71,104 +71,92 @@ async def restart_bot(client: Bot, message: Message):
 async def schedule_post(client: Bot, message: Message):
     """
     Schedules a message to be reposted at a specified time (WIB) and broadcasts it to all users.
-    Supports three formats:
+    Supports two formats:
     - /post jam:menit
     - /post tanggal/bulan/tahun jam:menit
-    - /post list: Menampilkan daftar pesan yang dijadwalkan
     """
 
+    if not message.reply_to_message:
+        return await message.reply_text("<b>Balas ke pesan yang ingin dijadwalkan.</b>")
+
     if len(message.command) < 2:
-        return await message.reply_text("**Format salah!** Gunakan:\n- `/post jam:menit` (dalam WIB)\n- `/post tanggal/bulan/tahun jam:menit` (dalam WIB)\n- `/post list`")
+        return await message.reply_text("<b>Format salah!</b> Gunakan:\n- `/post jam:menit` (dalam WIB)\n- `/post tanggal/bulan/tahun jam:menit` (dalam WIB)")
 
-    if message.command[1] == "list":
-        scheduled_posts = await get_scheduled_posts()
-        if not scheduled_posts:
-            return await message.reply_text("**Tidak ada pesan yang dijadwalkan.**")
-
-        post_list = "\n".join([
-            f"• Pesan ID: {post.message_id} - Dijadwalkan pada: {post.scheduled_time.strftime('%d/%m/%Y %H:%M')} WIB"
-            for post in scheduled_posts
-        ])
-        await message.reply_text(f"**Daftar Pesan yang Dijadwalkan:**\n\n{post_list}")
-    else:
-        if not message.reply_to_message:
-            return await message.reply_text("**Balas ke pesan yang ingin dijadwalkan.**")
-
-        try:
-            scheduled_time_str = message.command[1]
-            if "/" in scheduled_time_str:  # Format dengan tanggal
-                date_str, time_str = scheduled_time_str.split(" ")
-                scheduled_day, scheduled_month, scheduled_year = map(int, date_str.split("/"))
-                scheduled_hour, scheduled_minute = map(int, time_str.split(":"))
-                scheduled_time = datetime(scheduled_year, scheduled_month, scheduled_day, scheduled_hour, scheduled_minute, tzinfo=timezone('Asia/Jakarta'))
-            else:  # Format hanya jam
-                scheduled_hour, scheduled_minute = map(int, scheduled_time_str.split(":"))
-                now = datetime.now(timezone('Asia/Jakarta'))
-                if scheduled_hour < now.hour or (scheduled_hour == now.hour and scheduled_minute <= now.minute):
-                    scheduled_time = now.replace(hour=scheduled_hour, minute=scheduled_minute, second=0, microsecond=0) + timedelta(days=1)
-                else:
-                    scheduled_time = now.replace(hour=scheduled_hour, minute=scheduled_minute, second=0, microsecond=0)
-
-            if scheduled_hour < 0 or scheduled_hour > 23:
-                raise ValueError("Jam tidak valid. Harus antara 0 dan 23.")
-            if scheduled_minute < 0 or scheduled_minute > 59:
-                raise ValueError("Menit tidak valid. Harus antara 0 dan 59.")
-
+    try:
+        scheduled_time_str = message.command[1]
+        if "/" in scheduled_time_str:  # Format dengan tanggal
+            date_str, time_str = scheduled_time_str.split(" ")
+            scheduled_day, scheduled_month, scheduled_year = map(int, date_str.split("/"))
+            scheduled_hour, scheduled_minute = map(int, time_str.split(":"))
+            scheduled_time = datetime(scheduled_year, scheduled_month, scheduled_day, scheduled_hour, scheduled_minute, tzinfo=timezone('Asia/Jakarta'))
+        else:  # Format hanya jam
+            scheduled_hour, scheduled_minute = map(int, scheduled_time_str.split(":"))
             now = datetime.now(timezone('Asia/Jakarta'))
-            delay = (scheduled_time - now).total_seconds()
+            if scheduled_hour < now.hour or (scheduled_hour == now.hour and scheduled_minute <= now.minute):
+                scheduled_time = now.replace(hour=scheduled_hour, minute=scheduled_minute, second=0, microsecond=0) + timedelta(days=1)
+            else:
+                scheduled_time = now.replace(hour=scheduled_hour, minute=scheduled_minute, second=0, microsecond=0)
 
-            await message.reply_text(f"Pesan akan diposting ulang dan dibroadcast pada {scheduled_time.strftime('%d/%m/%Y %H:%M')} WIB.")
+        if scheduled_hour < 0 or scheduled_hour > 23:
+            raise ValueError("Jam tidak valid. Harus antara 0 dan 23.")
+        if scheduled_minute < 0 or scheduled_minute > 59:
+            raise ValueError("Menit tidak valid. Harus antara 0 dan 59.")
 
-            await asyncio.sleep(delay)
+        now = datetime.now(timezone('Asia/Jakarta'))
+        delay = (scheduled_time - now).total_seconds()
 
-            # Broadcast pesan ke semua pengguna
-            query = await query_msg()
-            broadcast_msg = message.reply_to_message
-            total = 0
-            successful = 0
-            blocked = 0
-            deleted = 0
-            unsuccessful = 0
+        await message.reply_text(f"Pesan akan diposting ulang dan dibroadcast pada {scheduled_time.strftime('%d/%m/%Y %H:%M')} WIB.")
 
-            pls_wait = await message.reply(
+        await asyncio.sleep(delay)
 
-                "<code>Broadcasting Message Tunggu Sebentar...</code>"
-            )
-            for row in query:
-                chat_id = int(row[0])
+        # Broadcast pesan ke semua pengguna
+        query = await query_msg()
+        broadcast_msg = message.reply_to_message
+        total = 0
+        successful = 0
+        blocked = 0
+        deleted = 0
+        unsuccessful = 0
 
-                if chat_id not in ADMINS:
-                    try:
-                        await broadcast_msg.copy(chat_id)
-                        successful += 1
-                    except FloodWait as e:
-                        await asyncio.sleep(e.x)
-                        await broadcast_msg.copy(chat_id)
+        pls_wait = await message.reply(
 
-                        successful += 1
-                    except UserIsBlocked:
+            "<code>Broadcasting Message Tunggu Sebentar...</code>"
+        )
+        for row in query:
+            chat_id = int(row[0])
 
-                        await delete_user(chat_id)
-                        blocked += 1
-                    except InputUserDeactivated:
-                        await delete_user(chat_id)
-                        deleted += 1
-                    except BaseException:
-                        unsuccessful += 1
-                    total += 1
+            if chat_id not in ADMINS:
+                try:
+                    await broadcast_msg.copy(chat_id)
+                    successful += 1
+                except FloodWait as e:
+                    await asyncio.sleep(e.x)
+                    await broadcast_msg.copy(chat_id)
 
-            status = f"""<b><u>Berhasil Broadcast</u>
-    Jumlah Pengguna: <code>{total}</code>
+                    successful += 1
+                except UserIsBlocked: 
 
-    Berhasil: <code>{successful}</code>
-    Gagal: <code>{unsuccessful}</code>
-    Pengguna diblokir: <code>{blocked}</code>
-    Akun Terhapus: <code>{deleted}</code></b>"""
+                    await delete_user(chat_id)
+                    blocked += 1
+                except InputUserDeactivated:
+                    await delete_user(chat_id)
+                    deleted += 1
+                except BaseException:
+                    unsuccessful += 1
+                total += 1
 
-            await pls_wait.edit(status)
+        status = f"""<b><u>Berhasil Broadcast</u>
+Jumlah Pengguna: <code>{total}</code>
 
-        except ValueError as e:
-            await message.reply_text(str(e))
+Berhasil: <code>{successful}</code>
+Gagal: <code>{unsuccessful}</code>
+Pengguna diblokir: <code>{blocked}</code>
+Akun Terhapus: <code>{deleted}</code></b>"""
+
+        await pls_wait.edit(status)
+
+    except ValueError as e:
+        await message.reply_text(str(e))
         
 
 @Bot.on_message(filters.command("config") & filters.user(ADMINS))
