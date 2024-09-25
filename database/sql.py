@@ -61,3 +61,35 @@ async def query_msg():
     finally:
         SESSION.close()
 
+class ScheduledPost(BASE):
+    __tablename__ = "scheduled_post"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    message_id = Column(Numeric)
+    scheduled_time = Column(DateTime)
+
+    def __init__(self, message_id, scheduled_time):
+        self.message_id = message_id
+        self.scheduled_time = scheduled_time
+
+
+ScheduledPost.__table__.create(checkfirst=True)
+
+
+async def add_scheduled_post(message_id, scheduled_time):
+    with INSERTION_LOCK:
+        post = ScheduledPost(message_id, scheduled_time)
+        SESSION.add(post)
+        SESSION.commit()
+
+
+async def get_scheduled_posts():
+    try:
+        return SESSION.query(ScheduledPost).all()
+    finally:
+        SESSION.close()
+
+
+async def delete_scheduled_post(message_id):
+    with INSERTION_LOCK:
+        SESSION.query(ScheduledPost).filter(ScheduledPost.message_id == message_id).delete()
+        SESSION.commit()
