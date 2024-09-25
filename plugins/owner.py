@@ -145,12 +145,12 @@ async def schedule_post(client: Bot, message: Message):
                 total += 1
 
         status = f"""<b><u>Berhasil Broadcast</u>
-Jumlah Pengguna: <code>{total}</code>   
+Jumlah Pengguna: <code>{total}</code>
 
 Berhasil: <code>{successful}</code>
 Gagal: <code>{unsuccessful}</code>
 Pengguna diblokir: <code>{blocked}</code>
-Akun Terhapus: <code>{deleted}</code></b>"""   
+Akun Terhapus: <code>{deleted}</code></b>"""
 
         await pls_wait.edit(status)
 
