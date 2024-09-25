@@ -170,25 +170,3 @@ async def send_config_file(client: Bot, message: Message):
             await message.reply_text("❌ <b>Error saat mengirim file config.env!</b>")
     else:
         await message.reply_text("❌ <b>File config.env tidak ditemukan!</b>")
-
-@Bot.on_message(filters.command("delete") & filters.user(ADMINS))
-async def delete_link(client: Bot, message: Message):
-    """Deletes a message from the database channel, effectively removing its share link."""
-
-    if len(message.command) < 2:
-        return await message.reply_text("<b>Silahkan berikan link pesan dari Channel ID Database untuk menghapusnya.</b>")
-
-    # Ambil link dari argumen perintah
-    message_link = message.command[1]
-
-    # Ekstrak ID pesan dari link
-    msg_id = await get_message_id(client, Message(text=message_link))  # Buat objek Message dummy untuk get_message_id
-    if not msg_id:
-        return await message.reply_text("<b>Link yang Anda berikan tidak valid atau bukan dari Channel ID Database.</b>")
-
-    try:
-        await client.delete_messages(chat_id=CHANNEL_ID, message_ids=msg_id)
-        await message.reply_text("✅ <b>Pesan berhasil dihapus dari Channel ID Database. Link berbagi tidak lagi valid.</b>")
-    except Exception as e:
-        LOGGER(__name__).error(f"Error saat menghapus pesan: {e}")
-        await message.reply_text("❌ <b>Terjadi kesalahan saat menghapus pesan. Silakan coba lagi nanti.</b>")
