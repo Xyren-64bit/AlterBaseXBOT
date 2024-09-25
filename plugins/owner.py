@@ -16,6 +16,7 @@ from pyrogram.types import Message
 from bot import Bot 
 from config import ADMINS, LOGGER
 from database.sql import query_msg, delete_user
+from helper_func import get_message_id
 
 
 @Bot.on_message(filters.command("edit") & filters.user(ADMINS))
@@ -166,6 +167,24 @@ async def send_config_file(client: Bot, message: Message):
             await message.reply_document("config.env")
         except Exception as e:
             LOGGER(__name__).warning(e)
-            await message.reply_text("❌ **Error saat mengirim file config.env!**")
+            await message.reply_text("❌ <b>Error saat mengirim file config.env!</b>")
     else:
         await message.reply_text("❌ **File config.env tidak ditemukan!**")
+
+@Bot.on_message(filters.command("delete") & filters.user(ADMINS))
+async def delete_link(client: Bot, message: Message):
+    """Deletes a message from the database channel, effectively removing its share link."""
+
+    if not message.reply_to_message:
+        return await message.reply_text("**Silahkan forward pesan dari Channel ID Database untuk menghapus linknya.**")
+
+    msg_id = await get_message_id(client, message.reply_to_message)
+    if not msg_id:
+        return await message.reply_text("**Pesan yang Anda forward bukan dari Channel ID Database.**")
+
+    try:
+        await client.delete_messages(chat_id=CHANNEL_ID, message_ids=msg_id)
+        await message.reply_text("✅ **Pesan berhasil dihapus dari Channel ID Database. Link berbagi tidak lagi valid.**")
+    except Exception as e:
+        LOGGER(__name__).error(f"Error saat menghapus pesan: {e}")
+        await message.reply_text("❌ **Terjadi kesalahan saat menghapus pesan. Silakan coba lagi nanti.**")
