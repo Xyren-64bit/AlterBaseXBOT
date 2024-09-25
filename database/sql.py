@@ -60,3 +60,4 @@ async def query_msg():
         return SESSION.query(Broadcast.id).order_by(Broadcast.id)
     finally:
         SESSION.close()
+
