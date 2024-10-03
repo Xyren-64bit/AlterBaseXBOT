@@ -14,6 +14,7 @@ from config import (
     FORCE_MSG,
     PROTECT_CONTENT,
     START_MSG,
+    BROADCAST_BLACKLIST,
 )
 from database.sql import add_user, delete_user, full_userbase, query_msg
 from pyrogram import filters
@@ -180,6 +181,9 @@ async def get_users(client: Bot, message: Message):
 
 @Bot.on_message(filters.command("broadcast") & filters.user(ADMINS))
 async def send_text(client: Bot, message: Message):
+    blacklist = [int(x) for x in BROADCAST_BLACKLIST.split() if x.isdigit()]
+    if message.from_user.id in blacklist:
+        return
     if message.reply_to_message:
         query = await query_msg()
         broadcast_msg = message.reply_to_message
