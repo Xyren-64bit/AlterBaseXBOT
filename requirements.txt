@@ -3,7 +3,6 @@ gitpython
 heroku3
 psycopg2-binary
 pyrofork
-pyrogram
 python-dotenv
 Pyromod==1.5
 speedtest-cli
