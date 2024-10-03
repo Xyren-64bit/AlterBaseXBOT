@@ -65,6 +65,7 @@ CUSTOM_CAPTION = os.environ.get("CUSTOM_CAPTION", None)
 
 # Setel True jika Anda ingin Menonaktifkan tombol Bagikan Kiriman Saluran Anda
 DISABLE_CHANNEL_BUTTON = strtobool(os.environ.get("DISABLE_CHANNEL_BUTTON", "False"))
+BROADCAST_BLACKLIST = os.environ.get("BROADCAST_BLACKLIST", "")
 
 # Jangan Dihapus nanti ERROR, HAPUS ID Dibawah ini = TERIMA KONSEKUENSI
 # Spoiler KONSEKUENSI-nya Paling CH nya tiba tiba ilang & owner nya gua gban 🤪
@@ -99,6 +100,7 @@ def reload_config():
                 "FORCE_SUB_CHANNEL",
                 "FORCE_SUB_GROUP",
                 "CHANNEL_ID",
+                "BROADCAST_BLACKLIST",
             ]
         }
     )
