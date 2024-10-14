@@ -1,12 +1,18 @@
+# (©)Codexbotz
+# Recode by @mrismanaziz
+# t.me/SharingUserbot & t.me/Lunatic0de
+
 import asyncio
+
 from pyrogram import Client, filters
 from pyrogram.errors import FloodWait
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+
 from bot import Bot
 from config import ADMINS, CHANNEL_ID, DISABLE_CHANNEL_BUTTON, LOGGER
-from utils.helpers import encode
+from helper_func import encode
 
-# Handler untuk menangani forward pesan dari admin dan membuat link secara otomatis
+
 @Bot.on_message(
     filters.private
     & filters.user(ADMINS)
@@ -16,73 +22,90 @@ from utils.helpers import encode
             "users",
             "broadcast",
             "ping",
-            "edit",
             "uptime",
             "batch",
             "logs",
             "genlink",
+            "delvar",
+            "getvar",
+            "setvar",
+            "speedtest",
+            "update",
+            "stats",
+            "vars",
+            "id",
         ]
     )
 )
-async def forward_to_channel(client: Client, message: Message):
-    # Tampilkan pesan sementara saat proses berlangsung
-    temp_msg = await message.reply_text("<code>Memproses pesan...</code>", quote=True)
-
-    # Mencoba untuk menyalin pesan ke channel database
+async def channel_post(client: Client, message: Message):
+    reply_text = await message.reply_text("<code>Tunggu Sebentar...</code>", quote=True)
     try:
-        forwarded_msg = await message.copy(chat_id=client.db_channel.id, disable_notification=True)
+        post_message = await message.copy(
+            chat_id=client.db_channel.id, disable_notification=True
+        )
     except FloodWait as e:
-        await asyncio.sleep(e.x)
-        forwarded_msg = await message.copy(chat_id=client.db_channel.id, disable_notification=True)
-    except Exception as err:
-        LOGGER(__name__).warning(err)
-        await temp_msg.edit_text("<b>Error saat memproses pesan...</b>")
+        await asyncio.sleep(e.value)
+        post_message = await message.copy(
+            chat_id=client.db_channel.id, disable_notification=True
+        )
+    except Exception as e:
+        LOGGER(__name__).warning(e)
+        await reply_text.edit_text("<b>Telah Terjadi Error...</b>")
         return
+    converted_id = post_message.id * abs(client.db_channel.id)
+    string = f"get-{converted_id}"
+    base64_string = await encode(string)
+    link = f"https://t.me/{client.username}?start={base64_string}"
 
-    # Membuat link sharing
-    msg_id = forwarded_msg.id * abs(client.db_channel.id)
-    encoded_string = f"get-{msg_id}"
-    link = f"https://t.me/{client.username}?start={encode(encoded_string)}"
-
-    # Membuat tombol share link
-    buttons = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("🔁 Bagikan Link", url=f"https://telegram.me/share/url?url={link}")]]
+    reply_markup = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "🔁 Share Link", url=f"https://telegram.me/share/url?url={link}"
+                )
+            ]
+        ]
     )
 
-    # Edit pesan sementara dengan link yang dibuat
-    await temp_msg.edit(
-        f"<b>Link Berhasil Dibuat:</b>\n\n{link}",
-        reply_markup=buttons,
+    await reply_text.edit(
+        f"<b>Link Sharing File Berhasil Di Buat :</b>\n\n{link}",
+        reply_markup=reply_markup,
         disable_web_page_preview=True,
     )
 
-    # Menambahkan tombol share ke pesan yang dikirim di channel database (jika diaktifkan)
     if not DISABLE_CHANNEL_BUTTON:
         try:
-            await forwarded_msg.edit_reply_markup(buttons)
+            await post_message.edit_reply_markup(reply_markup)
+        except FloodWait as e:
+            await asyncio.sleep(e.value)
+            await post_message.edit_reply_markup(reply_markup)
         except Exception:
             pass
 
 
-# Handler untuk membuat link secara otomatis ketika ada post baru di channel database
 @Bot.on_message(filters.channel & filters.incoming & filters.chat(CHANNEL_ID))
-async def auto_post(client: Client, message: Message):
-    # Jika tombol channel dinonaktifkan, hentikan proses
+async def new_post(client: Client, message: Message):
+
     if DISABLE_CHANNEL_BUTTON:
         return
 
-    # Buat link sharing otomatis
-    msg_id = message.id * abs(client.db_channel.id)
-    encoded_string = f"get-{msg_id}"
-    link = f"https://t.me/{client.username}?start={encode(encoded_string)}"
-
-    # Membuat tombol share link
-    buttons = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("🔁 Bagikan Link", url=f"https://telegram.me/share/url?url={link}")]]
+    converted_id = message.id * abs(client.db_channel.id)
+    string = f"get-{converted_id}"
+    base64_string = await encode(string)
+    link = f"https://t.me/{client.username}?start={base64_string}"
+    reply_markup = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "🔁 Share Link", url=f"https://telegram.me/share/url?url={link}"
+                )
+            ]
+        ]
     )
-
-    # Edit pesan dengan menambahkan tombol share link
     try:
-        await message.edit_reply_markup(buttons)
+        await message.edit_reply_markup(reply_markup)
+    except FloodWait as e:
+        await asyncio.sleep(e.value)
+        await message.edit_reply_markup(reply_markup)
     except Exception:
         pass
